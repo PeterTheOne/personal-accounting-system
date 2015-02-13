@@ -45,93 +45,84 @@
                     $line = str_replace(["\n", "\t", "\r"],['', '', ''], $line);
                     $csvLine = str_getcsv($line, ';');
 
-                    // match types
-                    /*$types = array(
-                        'Bezahlung Maestro',
-                        'Gutschrift Überweisung',
-                        'Auszahlung Maestro',
-                        'Abbuchung Einzugsermächtigung',
-                        'Zinsen HABEN'
-                    );
-                    $foundType = '';
-                    foreach($types as $type) {
-                        if (mb_stripos($csvLine[1], $type) !== false) {
-                            $foundType = $type;
-                            break;
-                        }
-                    }
-                    $csvLine[] = $foundType;*/
+                    $date = new DateTime($csvLine[2]);
 
-                    // split before and after id
-                    $split = preg_split("@[A-Z]{2}/\d{9} @", $csvLine[1]);
-                    if (isset($split[0])) {
-                        $csvLine[] = trim($split[0]);
-                    } else {
-                        $csvLine[] = '';
-                    }
+                    // remove leading plus sign
+                    $csvLine[4] = ltrim($csvLine[4], '+$');
+
+                    $csvLine[6] = '';
+                    $csvLine[7] = '';
+                    $csvLine[8] = '';
+                    $csvLine[9] = '';
+                    $csvLine[10] = '';
+                    $csvLine[11] = '';
 
                     // match id
+                    $id = '';
                     $result = preg_match("@[A-Z]{2}/\d{9} @", $csvLine[1], $matches);
                     if ($result === 1) {
-                        $csvLine[] = trim($matches[0]);
-                    } else {
-                        $csvLine[] = '';
+                        $id = trim($matches[0]);
                     }
-
-                    // split after id and before iban
-                    // also check if BIC or not
-                    $split1 = preg_split("@[A-Z]{2}/\d{9} @", $csvLine[1]);
-                    if (isset($split1[1])) {
-                        $split2 = preg_split("/ [A-Z]{2}\d{16,18} /", $split1[1]);
-                        if (isset($split2[0])) {
-                            if (\IsoCodes\SwiftBic::validate(trim($split2[0]))) {
-                                $csvLine[] = '';
-                                $csvLine[] = trim($split2[0]);
-                            } else {
-                                $csvLine[] = trim($split2[0]);
-                                $csvLine[] = '';
-                            }
-                        } else {
-                            $csvLine[] = '';
-                            $csvLine[] = '';
-                        }
-                    } else {
-                        $csvLine[] = '';
-                        $csvLine[] = '';
-                    }
+                    $csvLine[7] = $id;
 
                     // match iban
                     // only matches DE and AT iban's for now.
+                    $iban = '';
                     $result = preg_match("/ [A-Z]{2}\d{16,18} /", $csvLine[1], $matches);
                     if ($result === 1 && \IsoCodes\Iban::validate(trim($matches[0]))) {
-                        $csvLine[] = trim($matches[0]);
+                        $iban = trim($matches[0]);
                     } else {
-                        $date = new DateTime($csvLine[2]);
                         if ($date->format('Y') < 2014) {
                             $result = preg_match("/ \d{11} /", $csvLine[1], $matches);
                             if ($result === 1) {
-                                $csvLine[] = trim($matches[0]);
-                            } else {
-                                $csvLine[] = '';
+                                $iban = trim($matches[0]);
                             }
-                        } else {
-                            $csvLine[] = '';
+                        }
+                    }
+                    $csvLine[10] = $iban;
+
+                    // before id
+                    if (strlen($id)> 0) {
+                        $split = explode($id, $csvLine[1], 2);
+                        if (isset($split[0])) {
+                            $csvLine[6] = trim($split[0]);
                         }
                     }
 
-                    // split after iban
-                    // only matches DE and AT iban's for now.
-                    $split = preg_split("/ [A-Z]{2}\d{16,18} /", $csvLine[1]);
-                    if (isset($split[1])) {
-                        $csvLine[] = trim($split[1]);
-                    } else {
-                        $csvLine[] = '';
+                    // after id and before iban
+                    if (isset($split[1]) && strlen($iban) > 0) {
+                        $split2 = explode($iban, $split[1], 2);
+                        if (isset($split2[0])) {
+                            $csvLine[8] = trim($split2[0]);
+                            $result = preg_match("/ ([a-zA-Z]){4}([a-zA-Z]){2}([0-9a-zA-Z]){2}([0-9a-zA-Z]{3})? /", $split2[0], $matches);
+                            $result2 = preg_match("/ ([0-9]){5} /", $split2[0], $matches2);
+                            if ($result === 1 && \IsoCodes\SwiftBic::validate(trim($matches[0]))) {
+                                $csvLine[9] = trim($matches[0]);
+                            } else if ($result2 === 1 && $date->format('Y') < 2014) {
+                                $csvLine[9] = trim($matches2[0]);
+                            }
+                        }
                     }
 
-                    // remove leading plus sign
-                    $result = preg_replace("/^[\+]/", '', $csvLine[4]);
-                    if ($result !== NULL) {
-                        $csvLine[4] = $result;
+                    // after iban
+                    if (strlen($iban) > 0) {
+                        $split = explode($iban, $csvLine[1], 2);
+                        if (isset($split[1])) {
+                            $csvLine[11] = trim($split[1]);
+                        }
+                    }
+
+                    // extract name from before bankleitzahl
+                    if (strlen($csvLine[11]) === 0 && $csvLine[8] && $csvLine[9] && $date->format('Y') < 2014) {
+                        $split = explode($csvLine[9], $csvLine[8], 2);
+                        if (isset($split[0])) {
+                            $csvLine[11] = trim($split[0]);
+                        }
+                    }
+
+                    // remove duplicate text
+                    if ($csvLine[6] && $csvLine[11]) {
+                        $csvLine[11] = trim(str_replace($csvLine[6], '', $csvLine[11]));
                     }
 
                     $array[] = $csvLine;
@@ -171,9 +162,6 @@
             } catch (Exception $exception) {
                 echo '<p class="expetion">Exception: ' . $exception->getMessage() . '</p>';
             }
-
-
-
 
             ?>
         </div>
