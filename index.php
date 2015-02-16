@@ -233,6 +233,74 @@
             function showStats() {
                 global $pdo;
 
+
+
+
+
+                // expenses by category, previous month
+                // WITH ROLLUP
+                $statement = $pdo->query('
+                    SELECT
+                        category,
+                        SUM(amount) as sum,
+                        SUM(CASE when amount > 0 then amount else 0 end) as sumPositive,
+                        SUM(CASE when amount < 0 then amount else 0 end) as sumNegative
+                    FROM postingline 
+                    WHERE MONTH(valueDate) = MONTH(CURDATE()) - 1 AND YEAR(valueDate) = YEAR(CURDATE())
+                    GROUP BY category
+                ');
+                $result = $statement->fetchAll();
+
+                echo 'expenses by category, previous month';
+                echo '<table>';
+                echo '<tr><th>category</th><th>sum</th><th>sumPos</th><th>sumNeg</th></tr>';
+                foreach($result as $line) {
+                    echo '<tr>';
+                    echo '<td>' . $line->category . '</td>';
+                    echo '<td>' . number_format($line->sum, 2) . '</td>';
+                    echo '<td>' . number_format($line->sumPositive, 2) . '</td>';
+                    echo '<td>' . number_format($line->sumNegative, 2) . '</td>';
+                    echo '</tr>';
+                }
+                echo '</table>';
+
+                // expenses by category, current month
+                // WITH ROLLUP
+                $statement = $pdo->query('
+                    SELECT
+                        category,
+                        SUM(amount) as sum,
+                        SUM(CASE when amount > 0 then amount else 0 end) as sumPositive,
+                        SUM(CASE when amount < 0 then amount else 0 end) as sumNegative
+                    FROM postingline 
+                    WHERE MONTH(valueDate) = MONTH(CURDATE()) AND YEAR(valueDate) = YEAR(CURDATE())
+                    GROUP BY category
+                ');
+                $result = $statement->fetchAll();
+
+                echo "<br />\n";
+
+                echo 'expenses by category, current month';
+                echo '<table>';
+                echo '<tr><th>category</th><th>sum</th><th>sumPos</th><th>sumNeg</th></tr>';
+                foreach($result as $line) {
+                    echo '<tr>';
+                    echo '<td>' . $line->category . '</td>';
+                    echo '<td>' . number_format($line->sum, 2) . '</td>';
+                    echo '<td>' . number_format($line->sumPositive, 2) . '</td>';
+                    echo '<td>' . number_format($line->sumNegative, 2) . '</td>';
+                    echo '</tr>';
+                }
+                echo '</table>';
+
+
+
+
+
+
+
+                /*
+
                 // total
                 $statement = $pdo->query('
                     SELECT
@@ -287,7 +355,7 @@
                         SUM(CASE when amount < 0 then amount else 0 end) as sumNegative
                     FROM postingline
                     WHERE
-                        MONTH(valueDate) = MONTH(CURDATE()) - 1 
+                        MONTH(valueDate) = MONTH(CURDATE()) - 1 AND YEAR(valueDate) = YEAR(CURDATE())
                 ');
                 $result = $statement->fetch();
                 echo 'previous month sum: ' . number_format($result->sum, 2) . "<br />\n";
@@ -303,7 +371,7 @@
                         SUM(CASE when amount < 0 then amount else 0 end) as sumNegative
                     FROM postingline
                     WHERE
-                        MONTH(valueDate) = MONTH(CURDATE()) 
+                        MONTH(valueDate) = MONTH(CURDATE()) AND YEAR(valueDate) = YEAR(CURDATE())
                 ');
                 $result = $statement->fetch();
                 echo 'current month sum: ' . number_format($result->sum, 2) . "<br />\n";
@@ -319,7 +387,7 @@
                         SUM(CASE when amount < 0 then amount else 0 end) as sumNegative
                     FROM postingline
                     WHERE
-                        WEEK(valueDate) = WEEK(CURDATE()) - 1 
+                        WEEK(valueDate) = WEEK(CURDATE()) - 1 AND MONTH(valueDate) = MONTH(CURDATE()) AND YEAR(valueDate) = YEAR(CURDATE())
                 ');
                 $result = $statement->fetch();
                 echo 'previous week sum: ' . number_format($result->sum, 2) . "<br />\n";
@@ -335,7 +403,7 @@
                         SUM(CASE when amount < 0 then amount else 0 end) as sumNegative
                     FROM postingline
                     WHERE
-                        WEEK(valueDate) = WEEK(CURDATE()) 
+                        WEEK(valueDate) = WEEK(CURDATE()) AND MONTH(valueDate) = MONTH(CURDATE()) AND YEAR(valueDate) = YEAR(CURDATE())
                 ');
                 $result = $statement->fetch();
                 echo 'current week sum: ' . number_format($result->sum, 2) . "<br />\n";
@@ -361,9 +429,9 @@
                     ORDER BY valueDate;
                 ');
                 $result = $statement->fetchAll();
-                /*foreach ($result as $line) {
-                    echo $line->valueDate . ': ' . number_format($line->runningtotal, 2) . "<br />\n";
-                }*/
+                //foreach ($result as $line) {
+                    //echo $line->valueDate . ': ' . number_format($line->runningtotal, 2) . "<br />\n";
+                //}
 
                 $array = array();
                 $min = 0;
@@ -430,7 +498,7 @@
 
 
                 <?php
-
+                */
             }
 
             function showRules() {
@@ -478,7 +546,7 @@
                 showRules();
 
                 echo '<h2>stats</h2>';
-                //showStats();
+                showStats();
 
                 echo '<h2>lines</h2>';
                 showLines();
