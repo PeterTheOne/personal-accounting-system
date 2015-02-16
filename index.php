@@ -247,7 +247,7 @@
                         SUM(CASE when amount < 0 then amount else 0 end) as sumNegative
                     FROM postingline 
                     WHERE MONTH(valueDate) = MONTH(CURDATE()) - 1 AND YEAR(valueDate) = YEAR(CURDATE())
-                    GROUP BY category
+                    GROUP BY category WITH ROLLUP
                 ');
                 $result = $statement->fetchAll();
 
@@ -274,7 +274,7 @@
                         SUM(CASE when amount < 0 then amount else 0 end) as sumNegative
                     FROM postingline 
                     WHERE MONTH(valueDate) = MONTH(CURDATE()) AND YEAR(valueDate) = YEAR(CURDATE())
-                    GROUP BY category
+                    GROUP BY category WITH ROLLUP
                 ');
                 $result = $statement->fetchAll();
 
