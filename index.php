@@ -109,6 +109,68 @@
                 saveData($data);
             }
 
+            function applyRules() {
+                global $pdo;
+
+                $statement = $pdo->query('
+                    SELECT 
+                        id,
+                        search,
+                        category
+                    FROM rules
+                ');
+                $result = $statement->fetchAll();
+
+                $statement = $pdo->prepare('
+                    UPDATE postingline
+                    SET category=:category
+                    WHERE text LIKE :search
+                ');
+
+                foreach ($result as $line) {
+                    $line->search = '%' . $line->search . '%';
+                    $statement->bindParam(':search', $line->search);
+                    $statement->bindParam(':category', $line->category);
+                    $statement->execute();
+                }
+            }
+
+            function handleRulesForms() {
+                if (isset($_POST['apply'])) {
+                    applyRules();
+                }
+
+                if (!isset($_POST['search']) || !isset($_POST['category'])) {
+                    return;
+                }
+
+                if (strlen(trim($_POST['search'])) === 0 || strlen(trim($_POST['category'])) === 0) {
+                    return;
+                }
+
+                saveRule($_POST['search'], $_POST['category']);
+            }
+
+            function saveRule($search, $category) {
+                global $pdo;
+
+                $statement = $pdo->prepare('
+                    INSERT IGNORE INTO rules
+                    (
+                        search,
+                        category
+                    )
+                    VALUES (
+                        :search,
+                        :category
+                    )
+                ');
+
+                $statement->bindParam(':search', $search);
+                $statement->bindParam(':category', $category);
+                $statement->execute();
+            }
+
             function showLines() {
                 global $pdo;
 
@@ -126,7 +188,8 @@
                         comment,
                         contraAccount,
                         contraAccountBic,
-                        contraAccountName
+                        contraAccountName,
+                        category
                     FROM postingline
                 ');
                 $result = $statement->fetchAll();
@@ -146,6 +209,7 @@
                 echo '<th>contraAccountBic</th>';
                 echo '<th>contraAccountName</th>';
                 echo '<th>amount</th>';
+                echo '<th>category</th>';
                 echo '</tr>';
 
                 foreach ($result as $line) {
@@ -159,6 +223,7 @@
                     echo '<td>' . $line->contraAccountBic . '</td>';
                     echo '<td>' . $line->contraAccountName . '</td>';
                     echo '<td style="text-align: right;">' . number_format($line->amount, 2) . '</td>';
+                    echo '<td>' . $line->category . '</td>';
                     echo '</tr>';
                 }
 
@@ -368,13 +433,52 @@
 
             }
 
+            function showRules() {
+                global $pdo;
+
+                $statement = $pdo->query('
+                    SELECT 
+                        id,
+                        search,
+                        category
+                    FROM rules
+                ');
+                $result = $statement->fetchAll();
+
+                echo '<table>';
+                echo '<tr><th>id</th><th>search</th><th>category</th><th>action</th></tr>';
+                foreach ($result as $line) {
+                    echo '<tr>';
+                    echo '<td>' . $line->id . '</td>';
+                    echo '<td>' . $line->search . '</td>';
+                    echo '<td>' . $line->category . '</td>';
+                    echo '<td>apply, delete</td>';
+                    echo '</tr>';
+                }
+                echo '<tr><form action="index.php" method="post">';
+                echo '<td></td>';
+                echo '<td><input type="text" name="search" /></td>';
+                echo '<td><input type="text" name="category" /></td>';
+                echo '<td><button type="submit">Submit</button>, apply</td>';
+                echo '</form></tr>';
+                echo '<tr><form action="index.php" method="post">';
+                echo '<td></td>';
+                echo '<td></td>';
+                echo '<td><input type="hidden" name="apply" value="true" /></td>';
+                echo '<td><button type="submit">Apply All</button></td>';
+                echo '</form></tr>';
+                echo '</table>';
+            }
+
             try {
                 handleForms();
+                handleRulesForms();
 
                 echo '<h2>rules</h2>';
+                showRules();
 
                 echo '<h2>stats</h2>';
-                showStats();
+                //showStats();
 
                 echo '<h2>lines</h2>';
                 showLines();

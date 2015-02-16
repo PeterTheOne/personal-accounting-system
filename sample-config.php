@@ -25,7 +25,17 @@ try {
             contraAccountBic VARCHAR(255),
             contraAccountName VARCHAR(255),
 
+            category VARCHAR(255),
+
             UNIQUE(postingLineId)
+        );
+    ');
+
+    $pdo->query('
+        CREATE TABLE IF NOT EXISTS rules (
+            id INTEGER PRIMARY KEY AUTO_INCREMENT,
+            search VARCHAR(255),
+            category VARCHAR(255)
         );
     ');
 } catch (Exception $exception) {
