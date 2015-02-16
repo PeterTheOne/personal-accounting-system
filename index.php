@@ -32,9 +32,7 @@
             <?php
 
             include_once('config.php');
-            include_once('IsoCodeInterface.php');
-            include_once('Iban.php');
-            include_once('SwiftBic.php');
+            include_once('vendor/autoload.php');
 
             function parseImport($content) {
                 $lines = explode(PHP_EOL, $content);

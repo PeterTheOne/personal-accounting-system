@@ -1,0 +1,92 @@
+{
+    "_readme": [
+        "This file locks the dependencies of your project to a known state",
+        "Read more about it at http://getcomposer.org/doc/01-basic-usage.md#composer-lock-the-lock-file",
+        "This file is @generated automatically"
+    ],
+    "hash": "b7b313cc30f3564110f912966b8c7172",
+    "packages": [
+        {
+            "name": "ronanguilloux/isocodes",
+            "version": "1.1.2",
+            "source": {
+                "type": "git",
+                "url": "https://github.com/ronanguilloux/IsoCodes.git",
+                "reference": "e7b731831f6e2103744749c573ba55dcb089edb3"
+            },
+            "dist": {
+                "type": "zip",
+                "url": "https://api.github.com/repos/ronanguilloux/IsoCodes/zipball/e7b731831f6e2103744749c573ba55dcb089edb3",
+                "reference": "e7b731831f6e2103744749c573ba55dcb089edb3",
+                "shasum": ""
+            },
+            "require": {
+                "php": ">=5.3.0"
+            },
+            "require-dev": {
+                "fabpot/php-cs-fixer": "@stable",
+                "pdepend/pdepend": "2.0.*",
+                "phploc/phploc": "*",
+                "phpmd/phpmd": "2.0.*",
+                "phpunit/phpunit": "~4.4",
+                "satooshi/php-coveralls": "dev-master",
+                "sebastian/phpcpd": "*",
+                "squizlabs/php_codesniffer": "2.0.x-dev"
+            },
+            "type": "library",
+            "extra": {
+                "branch-alias": {
+                    "dev-master": "1.2.x-dev"
+                }
+            },
+            "autoload": {
+                "psr-0": {
+                    "IsoCodes": "src/"
+                }
+            },
+            "notification-url": "https://packagist.org/downloads/",
+            "license": [
+                "GPL-3.0+"
+            ],
+            "authors": [
+                {
+                    "name": "Ronan Guilloux",
+                    "email": "ronan.guilloux@gmail.com",
+                    "homepage": "http://github.com/ronanguilloux",
+                    "role": "Developer"
+                }
+            ],
+            "description": "PHP library, validating various ISO codes, such as IBAN, SWIFT/BIC, BBAN, RIB, Credit Card number, INSEE, VAT, NSS, Siren, Siret, Ssn, NINO, Zipcode (US, Canada, France...), EAN13, Spanish CIF & NIF",
+            "homepage": "https://github.com/ronanguilloux/IsoCodes",
+            "keywords": [
+                "BBAN",
+                "BIC",
+                "CIF",
+                "Credit Card number",
+                "EAN13",
+                "IBAN",
+                "INSEE",
+                "ISO codes",
+                "NIF",
+                "NINO",
+                "NSS",
+                "RIB",
+                "Siren",
+                "Siret",
+                "Ssn",
+                "swift",
+                "vat",
+                "zipcode"
+            ],
+            "time": "2012-10-10 00:00:00"
+        }
+    ],
+    "packages-dev": [],
+    "aliases": [],
+    "minimum-stability": "stable",
+    "stability-flags": [],
+    "prefer-stable": false,
+    "prefer-lowest": false,
+    "platform": [],
+    "platform-dev": []
+}
