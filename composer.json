@@ -1,5 +1,5 @@
 {
     "require": {
-        "ronanguilloux/isocodes": "1.1.2"
+        "petertheone/bawag-csv-parser": "dev-master"
     }
 }
