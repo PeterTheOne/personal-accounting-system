@@ -11,6 +11,7 @@
         <script src="./js/jquery-2.1.3.min.js"></script>
         <script src="./js/jquery.flot.js"></script>
         <script src="./js/jquery.flot.time.js"></script>
+        <script src="./js/jquery.flot.stack.js"></script>
     </head>
     <body>
         <div id="content">
@@ -182,7 +183,8 @@
                         text,
                         postingDate,
                         valueDate,
-                        date_format(valueDate, \'%d.%m.%Y\') as valueDate,
+                        date_format(postingDate, \'%d.%m.%Y\') as postingDateFormat,
+                        date_format(valueDate, \'%d.%m.%Y\') as valueDateFormat,
                         amount,
                         currency,
                         comment,
@@ -191,6 +193,7 @@
                         contraAccountName,
                         category
                     FROM postingline
+                    ORDER BY valueDate DESC
                 ');
                 $result = $statement->fetchAll();
 
@@ -217,7 +220,7 @@
                     echo '<td>' . $line->id . '</td>';
                     //echo '<td>' . $line->postingLineId . '</td>';
                     //echo '<td>' . $line->account . '</td>';
-                    echo '<td>' . $line->valueDate . '</td>';
+                    echo '<td>' . $line->valueDateFormat . '</td>';
                     echo '<td>' . $line->comment . '</td>';
                     echo '<td>' . $line->contraAccount . '</td>';
                     echo '<td>' . $line->contraAccountBic . '</td>';
@@ -237,6 +240,33 @@
 
 
 
+                // expenses by category, previous previous month
+                // WITH ROLLUP
+                $statement = $pdo->query('
+                    SELECT
+                        category,
+                        SUM(amount) as sum,
+                        SUM(CASE when amount > 0 then amount else 0 end) as sumPositive,
+                        SUM(CASE when amount < 0 then amount else 0 end) as sumNegative
+                    FROM postingline 
+                    WHERE MONTH(valueDate) = 12 AND YEAR(valueDate) = 2014
+                    GROUP BY category WITH ROLLUP
+                ');
+                $result = $statement->fetchAll();
+
+                echo 'expenses by category, previous previous month';
+                echo '<table>';
+                echo '<tr><th>category</th><th>sum</th><th>sumPos</th><th>sumNeg</th></tr>';
+                foreach($result as $line) {
+                    echo '<tr>';
+                    echo '<td>' . $line->category . '</td>';
+                    echo '<td>' . number_format($line->sum, 2) . '</td>';
+                    echo '<td>' . number_format($line->sumPositive, 2) . '</td>';
+                    echo '<td>' . number_format($line->sumNegative, 2) . '</td>';
+                    echo '</tr>';
+                }
+                echo '</table>';
+
                 // expenses by category, previous month
                 // WITH ROLLUP
                 $statement = $pdo->query('
@@ -250,6 +280,8 @@
                     GROUP BY category WITH ROLLUP
                 ');
                 $result = $statement->fetchAll();
+
+                echo "<br />\n";
 
                 echo 'expenses by category, previous month';
                 echo '<table>';
@@ -292,6 +324,338 @@
                     echo '</tr>';
                 }
                 echo '</table>';
+
+
+                // ...
+                /*$statement = $pdo->query('
+                    SELECT
+                        category,
+                        MONTH(valueDate) as month,
+                        YEAR(valueDate) as year,
+                        SUM(CASE when amount < 0 then amount else 0 end) as sumNegative
+                    FROM postingline 
+                    WHERE YEAR(valueDate) = 2015 OR (YEAR(valueDate) = 2014 && MONTH(valueDate) > 3)
+                    GROUP BY category, month
+                    ORDER BY category, year, month
+                ');*/
+                $statement = $pdo->query('
+                    SELECT
+                        category,
+                        MONTH(valueDate) as month,
+                        YEAR(valueDate) as year,
+                        SUM(CASE when amount < 0 then amount else 0 end) as sumNegative
+                    FROM postingline 
+                    WHERE YEAR(valueDate) = 2015 OR (YEAR(valueDate) = 2014 && MONTH(valueDate) > 3)
+                    GROUP BY category, month
+                    ORDER BY category, year, month
+                ');
+                $result = $statement->fetchAll();
+
+                /*echo '<pre>';
+                print_r($result);
+                echo '</pre>';*/
+
+                $dates = array();
+                $categories = array();
+                foreach ($result as $line) {
+                    $dates[] = (new DateTime())->setDate($line->year, $line->month, 1)->setTime(0, 0, 0)->getTimestamp() * 1000;
+                    $categories[] = $line->category;
+                }
+                $dates = array_unique($dates);
+                $categories = array_unique($categories);
+
+                $categoryArray = array();
+                foreach ($categories as $category) {
+                    $currentCategory = array();
+                    $currentCategory['label'] = $category;
+                    $currentCategory['data'] = array();
+                    foreach ($dates as $date) {
+                        $sum = 0;
+                        $currentCategory['data'][] = array($date, $sum);
+                    }
+                    $categoryArray[] = $currentCategory;
+                }
+
+                foreach ($result as $line) {
+                    foreach ($categoryArray as $key => $value) {
+                        if ($categoryArray[$key]['label'] === $line->category) {
+                            //echo "found <br />\n";
+                            $date = (new DateTime())->setDate($line->year, $line->month, 1)->setTime(0, 0, 0)->getTimestamp() * 1000;
+                            
+                            foreach ($categoryArray[$key]['data'] as $key2 => $value2) {
+                                if ($categoryArray[$key]['data'][$key2][0] === $date) {
+                                    $categoryArray[$key]['data'][$key2][1] = number_format(- $line->sumNegative, 2);
+                                    break;
+                                }
+                            }
+                            break;
+                        }
+                    }
+                }
+                $categoryArray;
+                
+                /*echo '<pre>';
+                print_r($categoryArray);
+                echo '</pre>';*/
+
+                /*$array = array();
+                $min = 0;
+                $currentCategory = null;
+                $categoryArray = null;
+                foreach ($result as $line) {
+                    if ($currentCategory !== $line->category) {
+                        if ($currentCategory !== null) {
+                            $array[] = $categoryArray;
+                        }
+
+                        $categoryArray = array();
+                        $categoryArray['stack'] = true;
+                        $categoryArray['label'] = $line->category;
+                        $currentCategory = $line->category;
+                    }
+                    $categoryArray['data'][] = array((new DateTime())->setDate($line->year, $line->month, 1)->getTimestamp() * 1000, number_format(- $line->sumNegative, 2));
+                }
+                $array[] = $categoryArray;*/
+                echo '<script>var values = ' . json_encode($categoryArray) . ';</script>' . "\n";
+                echo '<div id="graph-ausgaben" style="width: 100%; height: 400px;"></div>';
+
+                ?>
+
+                <script>
+                  var previousPoint = null;
+                  $("#graph-ausgaben").bind("plothover", function(event, pos, item) {
+                    if (item) {
+                      if (previousPoint == item.dataIndex) {
+                        return;
+                      }
+                      previousPoint = item.dataIndex;
+                      $('#tooltip').remove();
+                      var date = new Date(item.datapoint[0]);
+                      var dateformatted = date.getDate() + '.' + (date.getMonth() + 1) + '.' + date.getFullYear();
+                    var value = item.datapoint[1] + '€';
+                      $('<div id="tooltip">' + dateformatted + ': ' + value + '</div>').css({
+                        position: 'absolute',
+                        top: item.pageY + 20,
+                        left: item.pageX - 60,
+                        display: 'none',
+                        padding: 8,
+                        'background-color': 'rgba(255, 255, 255, 0.8)'
+                      }).appendTo("body").fadeIn(400);
+                    } else {
+                      $('#tooltip').remove();
+                      previousPoint = null;
+                    }
+                  });
+
+                  $.plot(
+                    "#graph-ausgaben",
+                    values,
+                    {
+                      series: {
+                        stack: true,
+                        /*lines: {
+                          show: true,
+                          steps: true,
+                          fill: true
+                        },
+                        points: {
+                          show: true
+                        },*/
+                        bars: {
+                            show: true,
+                            barWidth: 1500000000
+                        }
+                      },
+                      grid: {hoverable: true, clickable: true},
+                      xaxis: {
+                        mode: "time", 
+                        timeformat: "%d.%m.%Y"
+                      },
+                      yaxis: {
+                        //min: 0
+                      }
+                    }
+                  );
+                </script>
+
+
+
+
+                <?php
+
+
+
+
+
+
+
+
+
+
+
+                $statement = $pdo->query('
+                    SELECT
+                        category,
+                        MONTH(valueDate) as month,
+                        YEAR(valueDate) as year,
+                        SUM(CASE when amount > 0 then amount else 0 end) as sumPositive
+                    FROM postingline 
+                    WHERE YEAR(valueDate) = 2015 OR (YEAR(valueDate) = 2014 && MONTH(valueDate) > 3)
+                    GROUP BY category, month
+                    ORDER BY category, year, month
+                ');
+                $result = $statement->fetchAll();
+
+                /*echo '<pre>';
+                print_r($result);
+                echo '</pre>';*/
+
+                $dates = array();
+                $categories = array();
+                foreach ($result as $line) {
+                    $dates[] = (new DateTime())->setDate($line->year, $line->month, 1)->setTime(0, 0, 0)->getTimestamp() * 1000;
+                    $categories[] = $line->category;
+                }
+                $dates = array_unique($dates);
+                $categories = array_unique($categories);
+
+                $categoryArray = array();
+                foreach ($categories as $category) {
+                    $currentCategory = array();
+                    $currentCategory['label'] = $category;
+                    $currentCategory['data'] = array();
+                    foreach ($dates as $date) {
+                        $sum = 0;
+                        $currentCategory['data'][] = array($date, $sum);
+                    }
+                    $categoryArray[] = $currentCategory;
+                }
+
+                foreach ($result as $line) {
+                    foreach ($categoryArray as $key => $value) {
+                        if ($categoryArray[$key]['label'] === $line->category) {
+                            //echo "found <br />\n";
+                            $date = (new DateTime())->setDate($line->year, $line->month, 1)->setTime(0, 0, 0)->getTimestamp() * 1000;
+                            
+                            foreach ($categoryArray[$key]['data'] as $key2 => $value2) {
+                                if ($categoryArray[$key]['data'][$key2][0] === $date) {
+                                    $categoryArray[$key]['data'][$key2][1] = number_format($line->sumPositive, 2);
+                                    break;
+                                }
+                            }
+                            break;
+                        }
+                    }
+                }
+                $categoryArray;
+                
+                /*echo '<pre>';
+                print_r($categoryArray);
+                echo '</pre>';*/
+
+                /*$array = array();
+                $min = 0;
+                $currentCategory = null;
+                $categoryArray = null;
+                foreach ($result as $line) {
+                    if ($currentCategory !== $line->category) {
+                        if ($currentCategory !== null) {
+                            $array[] = $categoryArray;
+                        }
+
+                        $categoryArray = array();
+                        $categoryArray['stack'] = true;
+                        $categoryArray['label'] = $line->category;
+                        $currentCategory = $line->category;
+                    }
+                    $categoryArray['data'][] = array((new DateTime())->setDate($line->year, $line->month, 1)->getTimestamp() * 1000, number_format(- $line->sumNegative, 2));
+                }
+                $array[] = $categoryArray;*/
+                echo '<script>var values = ' . json_encode($categoryArray) . ';</script>' . "\n";
+                echo '<div id="graph-einnahmen" style="width: 100%; height: 400px;"></div>';
+
+                ?>
+
+                <script>
+                  var previousPoint = null;
+                  $("#graph-einnahmen").bind("plothover", function(event, pos, item) {
+                    if (item) {
+                      if (previousPoint == item.dataIndex) {
+                        return;
+                      }
+                      previousPoint = item.dataIndex;
+                      $('#tooltip').remove();
+                      var date = new Date(item.datapoint[0]);
+                      var dateformatted = date.getDate() + '.' + (date.getMonth() + 1) + '.' + date.getFullYear();
+                    var value = item.datapoint[1] + '€';
+                      $('<div id="tooltip">' + dateformatted + ': ' + value + '</div>').css({
+                        position: 'absolute',
+                        top: item.pageY + 20,
+                        left: item.pageX - 60,
+                        display: 'none',
+                        padding: 8,
+                        'background-color': 'rgba(255, 255, 255, 0.8)'
+                      }).appendTo("body").fadeIn(400);
+                    } else {
+                      $('#tooltip').remove();
+                      previousPoint = null;
+                    }
+                  });
+
+                  $.plot(
+                    "#graph-einnahmen",
+                    values,
+                    {
+                      series: {
+                        stack: true,
+                        /*lines: {
+                          show: true,
+                          steps: true,
+                          fill: true
+                        },
+                        points: {
+                          show: true
+                        },*/
+                        bars: {
+                            show: true,
+                            barWidth: 1500000000
+                        }
+                      },
+                      grid: {hoverable: true, clickable: true},
+                      xaxis: {
+                        mode: "time", 
+                        timeformat: "%d.%m.%Y"
+                      },
+                      yaxis: {
+                        //min: 0
+                      }
+                    }
+                  );
+                </script>
+
+
+
+
+                <?php
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 
